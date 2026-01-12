@@ -35,7 +35,23 @@ usage() {
     echo "  HOST_OPENPILOT_PATH=/path/to/op $0 run  # Mount specific path"
 }
 
+check_git_lfs() {
+    # Check if poetry.lock is an LFS pointer
+    if head -1 poetry.lock 2>/dev/null | grep -q "version https://git-lfs"; then
+        echo "ERROR: poetry.lock is a git-lfs pointer, not the actual file."
+        echo ""
+        echo "Please run the following commands first:"
+        echo "  git lfs install"
+        echo "  git lfs pull"
+        echo ""
+        exit 1
+    fi
+}
+
 build_image() {
+    echo "Checking git-lfs files..."
+    check_git_lfs
+
     echo "Building Docker image: ${IMAGE_NAME}"
     docker build \
         -t ${IMAGE_NAME} \
