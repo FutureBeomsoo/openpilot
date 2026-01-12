@@ -1,0 +1,108 @@
+# openpilot v0.9.4 Development Container
+# Ubuntu 20.04 base for full compatibility
+
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    autoconf \
+    build-essential \
+    ca-certificates \
+    clang \
+    cmake \
+    make \
+    cppcheck \
+    libtool \
+    curl \
+    locales \
+    git \
+    git-lfs \
+    bzip2 \
+    liblzma-dev \
+    libarchive-dev \
+    libbz2-dev \
+    capnproto \
+    libcapnp-dev \
+    libcurl4-openssl-dev \
+    ffmpeg \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libavfilter-dev \
+    libavresample-dev \
+    libeigen3-dev \
+    libffi-dev \
+    libglew-dev \
+    libgles2-mesa-dev \
+    libglfw3-dev \
+    libglib2.0-0 \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libomp-dev \
+    libopencv-dev \
+    libpng16-16 \
+    libportaudio2 \
+    libssl-dev \
+    libsqlite3-dev \
+    libusb-1.0-0-dev \
+    libzmq3-dev \
+    libsystemd-dev \
+    opencl-headers \
+    ocl-icd-libopencl1 \
+    ocl-icd-opencl-dev \
+    clinfo \
+    portaudio19-dev \
+    qml-module-qtquick2 \
+    qtmultimedia5-dev \
+    qtlocation5-dev \
+    qtpositioning5-dev \
+    qttools5-dev-tools \
+    libqt5sql5-sqlite \
+    libqt5svg5-dev \
+    libqt5charts5-dev \
+    libqt5x11extras5-dev \
+    libreadline-dev \
+    libdw1 \
+    qt5-default \
+    python-dev \
+    python3-pip \
+    valgrind \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pyenv
+ENV PYENV_ROOT="/root/.pyenv"
+ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
+
+RUN curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+
+# Install Python 3.11.4
+RUN CONFIGURE_OPTS="--enable-shared" pyenv install 3.11.4 && \
+    pyenv global 3.11.4 && \
+    pyenv rehash
+
+# Install poetry
+RUN pip install --upgrade pip==22.3.1 && \
+    pip install poetry==1.2.2 && \
+    pyenv rehash
+
+# Set working directory
+WORKDIR /openpilot
+
+# Copy pyproject files first for caching
+COPY pyproject.toml poetry.lock ./
+
+# Configure poetry
+RUN poetry config virtualenvs.create false
+
+# Install Python dependencies
+RUN poetry install --no-cache --no-root
+
+# Set environment
+ENV PYTHONPATH=/openpilot
+
+CMD ["/bin/bash"]
