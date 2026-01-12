@@ -10,7 +10,7 @@ cd "$DIR"
 IMAGE_NAME="openpilot-dev:focal"
 CONTAINER_NAME="openpilot-dev"
 
-# Host path to mount (change this to your local openpilot path)
+# Host path to mount
 HOST_OPENPILOT_PATH="${HOST_OPENPILOT_PATH:-$(pwd)}"
 # Container path
 CONTAINER_OPENPILOT_PATH="/home/pbs/openpilot_ws/openpilot_e2e"
@@ -19,40 +19,23 @@ usage() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  build       Build the Docker image"
+    echo "  build       Build the Docker image (uses ghcr.io/commaai/openpilot-base)"
     echo "  run         Run the Docker container (interactive)"
     echo "  exec        Execute bash in running container"
     echo "  stop        Stop the running container"
-    echo "  scons       Build openpilot with scons inside container"
     echo "  help        Show this help message"
     echo ""
     echo "Environment variables:"
     echo "  HOST_OPENPILOT_PATH  Path to openpilot on host (default: current directory)"
     echo ""
-    echo "Examples:"
-    echo "  $0 build                           # Build Docker image"
-    echo "  $0 run                             # Start container with interactive shell"
-    echo "  HOST_OPENPILOT_PATH=/path/to/op $0 run  # Mount specific path"
-}
-
-check_git_lfs() {
-    # Check if poetry.lock is an LFS pointer
-    if head -1 poetry.lock 2>/dev/null | grep -q "version https://git-lfs"; then
-        echo "ERROR: poetry.lock is a git-lfs pointer, not the actual file."
-        echo ""
-        echo "Please run the following commands first:"
-        echo "  git lfs install"
-        echo "  git lfs pull"
-        echo ""
-        exit 1
-    fi
+    echo "After 'run', inside container:"
+    echo "  poetry shell"
+    echo "  scons -u -j\$(nproc)"
 }
 
 build_image() {
-    echo "Checking git-lfs files..."
-    check_git_lfs
-
     echo "Building Docker image: ${IMAGE_NAME}"
+    echo "Base image: ghcr.io/commaai/openpilot-base:latest"
     docker build \
         -t ${IMAGE_NAME} \
         -f Dockerfile.dev \
@@ -97,14 +80,6 @@ stop_container() {
     echo "Container stopped"
 }
 
-run_scons() {
-    echo "Building openpilot with scons..."
-    docker exec -it ${CONTAINER_NAME} /bin/bash -c "
-        cd ${CONTAINER_OPENPILOT_PATH} && \
-        scons -u -j\$(nproc)
-    "
-}
-
 case "${1:-help}" in
     build)
         build_image
@@ -117,9 +92,6 @@ case "${1:-help}" in
         ;;
     stop)
         stop_container
-        ;;
-    scons)
-        run_scons
         ;;
     help|*)
         usage

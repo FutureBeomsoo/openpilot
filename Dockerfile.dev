@@ -1,138 +1,24 @@
-# Development Dockerfile for openpilot (Ubuntu 20.04 LTS)
-# Extends Dockerfile.openpilot_base with development tools
+# Development Dockerfile for openpilot
+# Uses pre-built openpilot-base image with volume mount for local development
 
-FROM ubuntu:20.04
+FROM ghcr.io/commaai/openpilot-base:latest
 
-ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Locale setup
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends sudo tzdata locales ssh && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
-
-# Pyenv environment
-ENV POETRY_VIRTUALENVS_CREATE=false
-ENV PYENV_VERSION=3.11.4
-ENV PYENV_ROOT="/root/.pyenv"
-ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
-
-# Copy setup files
-COPY pyproject.toml poetry.lock .python-version /tmp/
-COPY tools/ubuntu_setup.sh /tmp/tools/
-COPY update_requirements.sh /tmp/
-
-# Install system dependencies (ubuntu_setup.sh without python part)
+# Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    autoconf \
-    build-essential \
-    ca-certificates \
-    casync \
-    clang \
-    cmake \
-    make \
-    cppcheck \
-    libtool \
-    gcc-arm-none-eabi \
-    bzip2 \
-    liblzma-dev \
-    libarchive-dev \
-    libbz2-dev \
-    capnproto \
-    libcapnp-dev \
-    curl \
-    libcurl4-openssl-dev \
-    git \
-    git-lfs \
-    ffmpeg \
-    libavformat-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavutil-dev \
-    libavfilter-dev \
-    libeigen3-dev \
-    libffi-dev \
-    libglew-dev \
-    libgles2-mesa-dev \
-    libglfw3-dev \
-    libglib2.0-0 \
-    libncurses5-dev \
-    libncursesw5-dev \
-    libomp-dev \
-    libopencv-dev \
-    libpng16-16 \
-    libportaudio2 \
-    libssl-dev \
-    libsqlite3-dev \
-    libusb-1.0-0-dev \
-    libzmq3-dev \
-    libsystemd-dev \
-    locales \
-    opencl-headers \
-    ocl-icd-libopencl1 \
-    ocl-icd-opencl-dev \
-    clinfo \
-    portaudio19-dev \
-    qml-module-qtquick2 \
-    qtmultimedia5-dev \
-    qtlocation5-dev \
-    qtpositioning5-dev \
-    qttools5-dev-tools \
-    libqt5sql5-sqlite \
-    libqt5svg5-dev \
-    libqt5charts5-dev \
-    libqt5x11extras5-dev \
-    libreadline-dev \
-    libdw1 \
-    valgrind \
-    libavresample-dev \
-    qt5-default \
-    python-dev \
     vim \
     tmux \
     htop \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pyenv
-RUN curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+# Re-install poetry (removed in base image)
+RUN pip install poetry==1.2.2
 
-# Install Python 3.11.4
-ENV MAKEFLAGS="-j$(nproc)"
-RUN CONFIGURE_OPTS="--enable-shared" pyenv install ${PYENV_VERSION} && \
-    pyenv global ${PYENV_VERSION} && \
-    pyenv rehash
-
-# Install pip and poetry
-RUN pip install --upgrade pip==22.3.1 && \
-    pip install poetry==1.2.2
-
-# Configure poetry and install dependencies
-RUN cd /tmp && \
-    poetry config virtualenvs.prefer-active-python true --local && \
-    echo "PYTHONPATH=/tmp" > .env && \
-    poetry self add poetry-dotenv-plugin@^0.1.0 && \
-    poetry install --no-cache --no-root && \
-    pyenv rehash
-
-# Cleanup
-RUN rm -rf /var/lib/apt/lists/* /tmp/* /root/.cache
-
-# Remove unused gcc architectures
-RUN cd /usr/lib/gcc/arm-none-eabi/9.2.1 && \
-    rm -rf arm/ && \
-    rm -rf thumb/nofp thumb/v6* thumb/v8* thumb/v7+fp thumb/v7-r+fp.sp || true
-
-# Git safe directory
+# Git safe directory for mounted volumes
 RUN git config --global --add safe.directory '*'
 
-# Set working directory
+# Working directory (will be mounted)
 ENV OPENPILOT_PATH=/home/pbs/openpilot_ws/openpilot_e2e
+ENV PYTHONPATH=${OPENPILOT_PATH}
 WORKDIR ${OPENPILOT_PATH}
 
 CMD ["/bin/bash"]
