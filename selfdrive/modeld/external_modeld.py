@@ -208,7 +208,7 @@ def fill_temporal_pose(builder, data):
 
 def build_modelv2_msg(data, valid=True):
   """Build ModelV2 capnp message from dict data"""
-  msg = messaging.new_message('modelV2', valid=valid)
+  msg = messaging.new_message('modelV2')
   model = msg.modelV2
 
   # Basic fields
@@ -223,13 +223,14 @@ def build_modelv2_msg(data, valid=True):
   model.locationMonoTime = data.get('locationMonoTime', 0)
 
   # Position, orientation, velocity, acceleration trajectory data
+  # Use init() to properly initialize capnp builders
   fill_xyzt_data(model.init('position'), data.get('position', {}))
   fill_xyzt_data(model.init('orientation'), data.get('orientation', {}))
   fill_xyzt_data(model.init('orientationRate'), data.get('orientationRate', {}))
   fill_xyzt_data(model.init('velocity'), data.get('velocity', {}))
   fill_xyzt_data(model.init('acceleration'), data.get('acceleration', {}))
 
-  # Lane lines (4 lines)
+  # Lane lines (4 lines) - use init() for list fields
   lane_lines_data = data.get('laneLines', [])
   if lane_lines_data:
     lane_lines = model.init('laneLines', len(lane_lines_data))
@@ -239,7 +240,7 @@ def build_modelv2_msg(data, valid=True):
   model.laneLineProbs = data.get('laneLineProbs', [0.0] * 4)
   model.laneLineStds = data.get('laneLineStds', [1.0] * 4)
 
-  # Road edges (2 edges)
+  # Road edges (2 edges) - use init() for list fields
   road_edges_data = data.get('roadEdges', [])
   if road_edges_data:
     road_edges = model.init('roadEdges', len(road_edges_data))
@@ -248,7 +249,7 @@ def build_modelv2_msg(data, valid=True):
 
   model.roadEdgeStds = data.get('roadEdgeStds', [1.0] * 2)
 
-  # Leads V3 (primary lead data for this version)
+  # Leads V3 (primary lead data for this version) - use init() for list fields
   leads_v3_data = data.get('leadsV3', data.get('leads', []))
   if leads_v3_data:
     leads_v3 = model.init('leadsV3', len(leads_v3_data))
@@ -270,12 +271,15 @@ def build_modelv2_msg(data, valid=True):
   # Temporal pose
   fill_temporal_pose(model.init('temporalPose'), data.get('temporalPose', {}))
 
+  # Set valid flag explicitly (important for SubMaster to recognize the message)
+  msg.valid = valid
+
   return msg
 
 
 def build_camera_odometry_msg(data, frame_id, valid=True):
   """Build cameraOdometry capnp message from pose data"""
-  msg = messaging.new_message('cameraOdometry', valid=valid)
+  msg = messaging.new_message('cameraOdometry')
   odom = msg.cameraOdometry
 
   odom.frameId = frame_id
@@ -296,6 +300,9 @@ def build_camera_odometry_msg(data, frame_id, valid=True):
   odom.wideFromDeviceEulerStd = odom_data.get('wideFromDeviceEulerStd', [1.0, 1.0, 1.0])
   odom.roadTransformTrans = road_transform.get('trans', odom_data.get('roadTransformTrans', [0.0, 0.0, 0.0]))
   odom.roadTransformTransStd = road_transform.get('transStd', odom_data.get('roadTransformTransStd', [1.0, 1.0, 1.0]))
+
+  # Set valid flag explicitly
+  msg.valid = valid
 
   return msg
 
