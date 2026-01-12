@@ -10,17 +10,14 @@ if [ "$(uname)" == "Darwin" ] && [ $SHELL == "/bin/bash" ]; then
   RC_FILE="$HOME/.bash_profile"
 fi
 
-# Install pyenv if not present
-if ! command -v "pyenv" > /dev/null 2>&1; then
+# Install pyenv if not present (check both command and directory)
+if ! command -v "pyenv" > /dev/null 2>&1 && [[ ! -d "$HOME/.pyenv" ]]; then
   echo "Installing pyenv..."
   curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+fi
 
-  # Add pyenv to RC file
-  if ! grep -q "pyenvrc" "$RC_FILE" 2>/dev/null; then
-    echo -e "\n. ~/.pyenvrc" >> $RC_FILE
-  fi
-
-  cat <<EOF > "${HOME}/.pyenvrc"
+# Create/update pyenvrc
+cat <<EOF > "${HOME}/.pyenvrc"
 if [ -z "\$PYENV_ROOT" ]; then
   export PATH=\$HOME/.pyenv/bin:\$HOME/.pyenv/shims:\$PATH
   export PYENV_ROOT="\$HOME/.pyenv"
@@ -28,6 +25,10 @@ if [ -z "\$PYENV_ROOT" ]; then
   eval "\$(pyenv virtualenv-init -)"
 fi
 EOF
+
+# Add pyenv to RC file if not already present
+if ! grep -q "pyenvrc" "$RC_FILE" 2>/dev/null; then
+  echo -e "\n. ~/.pyenvrc" >> $RC_FILE
 fi
 
 # Always setup pyenv for current session
