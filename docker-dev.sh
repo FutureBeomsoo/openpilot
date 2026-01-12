@@ -1,13 +1,13 @@
 #!/bin/bash
 # Development Docker helper script for openpilot
-# Based on tools/sim/start_openpilot_docker.sh
+# Uses ubuntu:20.04 base image with volume mount
 
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 cd "$DIR"
 
-IMAGE_NAME="openpilot-dev:focal"
+IMAGE_NAME="ubuntu:20.04"
 CONTAINER_NAME="openpilot-dev"
 
 # Host path to mount
@@ -19,7 +19,6 @@ usage() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  build       Build the Docker image (uses ghcr.io/commaai/openpilot-base)"
     echo "  run         Run the Docker container (interactive)"
     echo "  exec        Execute bash in running container"
     echo "  stop        Stop the running container"
@@ -29,19 +28,9 @@ usage() {
     echo "  HOST_OPENPILOT_PATH  Path to openpilot on host (default: current directory)"
     echo ""
     echo "After 'run', inside container:"
+    echo "  tools/ubuntu_setup.sh"
     echo "  poetry shell"
     echo "  scons -u -j\$(nproc)"
-}
-
-build_image() {
-    echo "Building Docker image: ${IMAGE_NAME}"
-    echo "Base image: ghcr.io/commaai/openpilot-base:latest"
-    docker build \
-        -t ${IMAGE_NAME} \
-        -f Dockerfile.dev \
-        .
-    echo ""
-    echo "Docker image built successfully: ${IMAGE_NAME}"
 }
 
 run_container() {
@@ -81,9 +70,6 @@ stop_container() {
 }
 
 case "${1:-help}" in
-    build)
-        build_image
-        ;;
     run)
         run_container
         ;;
