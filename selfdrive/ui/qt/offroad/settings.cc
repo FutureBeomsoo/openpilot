@@ -69,6 +69,12 @@ TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
       tr("Display speed in km/h instead of mph."),
       "../assets/offroad/icon_metric.png",
     },
+    {
+      "UseExternalModel",
+      tr("Use External Model"),
+      tr("When enabled, openpilot will receive ModelV2 data from an external source instead of the built-in driving model. The internal model will continue running for cameraOdometry."),
+      "../assets/offroad/icon_shell.png",
+    },
 #ifdef ENABLE_MAPS
     {
       "NavSettingTime24h",
