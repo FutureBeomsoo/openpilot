@@ -64,6 +64,10 @@ void run_model(ModelState &model, VisionIpcClient &vipc_client_main, VisionIpcCl
 
   Params params;
 
+  // Check if external model mode is enabled (modelV2 published by external source)
+  bool use_external_model = params.getBool("UseExternalModel");
+  LOGW("External Model mode: %s", use_external_model ? "enabled" : "disabled");
+
   // setup filter to track dropped frames
   FirstOrderFilter frame_dropped_filter(0., 10., 1. / MODEL_FREQ);
 
@@ -179,8 +183,12 @@ void run_model(ModelState &model, VisionIpcClient &vipc_client_main, VisionIpcCl
     float model_execution_time = (mt2 - mt1) / 1000.0;
 
     if (model_output != nullptr) {
-      model_publish(&model, pm, meta_main.frame_id, meta_extra.frame_id, frame_id, frame_drop_ratio, *model_output, meta_main.timestamp_eof, timestamp_llk, model_execution_time,
-                    nav_enabled, live_calib_seen);
+      // Only publish modelV2 if NOT using external model (external source publishes modelV2)
+      if (!use_external_model) {
+        model_publish(&model, pm, meta_main.frame_id, meta_extra.frame_id, frame_id, frame_drop_ratio, *model_output, meta_main.timestamp_eof, timestamp_llk, model_execution_time,
+                      nav_enabled, live_calib_seen);
+      }
+      // Always publish cameraOdometry (needed by locationd/calibrationd regardless of model source)
       posenet_publish(pm, meta_main.frame_id, vipc_dropped_frames, *model_output, meta_main.timestamp_eof, live_calib_seen);
     }
 
