@@ -3,6 +3,10 @@
 
 FROM ghcr.io/commaai/openpilot-base:latest
 
+# Ensure pyenv PATH is set (inherited from base but explicit for clarity)
+ENV PYENV_ROOT="/root/.pyenv"
+ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
+
 # Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
