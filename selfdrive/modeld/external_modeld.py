@@ -22,10 +22,12 @@ External ModelV2 Data Requirements:
 The LateralPlanner will use this data to compute curvatures via lat_mpc.
 
 Usage:
-1. Set UseExternalModel=1 in params
-2. Optionally set ExternalModelV2Addr and ExternalModelV2Topic
-3. Run openpilot - external_modeld will start instead of modeld
-4. Send ModelV2 data via ZMQ in JSON format
+1. Set UseExternalModel=1 in params (modeld will skip modelV2 publishing)
+2. Run this test module separately: python selfdrive/modeld/external_modeld.py
+3. Configure via environment variables:
+   - EXTERNAL_MODELV2_ADDR: ZMQ address (default: tcp://localhost:5557)
+   - EXTERNAL_MODELV2_TOPIC: ZMQ topic (default: modelV2)
+4. Send ModelV2 data via ZMQ in JSON format from your external system
 
 Example JSON format for external data:
 {
@@ -44,7 +46,6 @@ import json
 import numpy as np
 import zmq
 
-from common.params import Params
 from common.realtime import DT_MDL, config_realtime_process, Priority
 import cereal.messaging as messaging
 from cereal import log
@@ -416,18 +417,10 @@ class ExternalModelReceiver:
 def main():
   config_realtime_process(4, Priority.CTRL_HIGH)
 
-  params = Params()
-
-  # Get configuration from params or environment
-  zmq_addr = params.get("ExternalModelV2Addr", encoding='utf-8')
-  if not zmq_addr:
-    zmq_addr = EXTERNAL_ZMQ_ADDR
-
-  zmq_topic = params.get("ExternalModelV2Topic", encoding='utf-8')
-  if not zmq_topic:
-    zmq_topic = EXTERNAL_ZMQ_TOPIC
-
-  receiver = ExternalModelReceiver(zmq_addr, zmq_topic)
+  # Configuration via environment variables (this is an external test module)
+  # EXTERNAL_MODELV2_ADDR: ZMQ address to connect to (default: tcp://localhost:5557)
+  # EXTERNAL_MODELV2_TOPIC: ZMQ topic to subscribe (default: modelV2)
+  receiver = ExternalModelReceiver(EXTERNAL_ZMQ_ADDR, EXTERNAL_ZMQ_TOPIC)
 
   try:
     receiver.run()

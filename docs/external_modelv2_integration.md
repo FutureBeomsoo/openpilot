@@ -36,32 +36,30 @@ camerad → modeld.cc → modelV2 → LateralPlanner → lateralPlan → control
 ```cpp
 // External Model Parameters
 {"UseExternalModel", PERSISTENT},
-{"ExternalModelV2Addr", PERSISTENT},
-{"ExternalModelV2Topic", PERSISTENT},
 ```
 
-### 2. 프로세스 설정 (`selfdrive/manager/process_config.py`)
+### 2. modeld 수정 (`selfdrive/modeld/modeld.cc`)
 
-```python
-def use_external_model(started, params, CP: car.CarParams) -> bool:
-  """Check if external model should be used instead of native modeld"""
-  return started and params.get_bool("UseExternalModel")
+modeld는 항상 실행되지만, UseExternalModel이 활성화되면 modelV2 발행을 건너뜁니다.
+cameraOdometry는 locationd/calibrationd를 위해 항상 발행됩니다.
 
-def use_native_model(started, params, CP: car.CarParams) -> bool:
-  """Check if native modeld should be used (not external)"""
-  return started and not params.get_bool("UseExternalModel")
+```cpp
+// Check if external model mode is enabled
+bool use_external_model = params.getBool("UseExternalModel");
 
-procs = [
-  # ...
-  NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], callback=use_native_model),
-  PythonProcess("external_modeld", "selfdrive.modeld.external_modeld", callback=use_external_model),
-  # ...
-]
+if (model_output != nullptr) {
+  // Only publish modelV2 if NOT using external model
+  if (!use_external_model) {
+    model_publish(&model, pm, ...);
+  }
+  // Always publish cameraOdometry
+  posenet_publish(pm, ...);
+}
 ```
 
-### 3. External ModelV2 Receiver (`selfdrive/modeld/external_modeld.py`)
+### 3. 테스트 모듈 (`selfdrive/modeld/external_modeld.py`)
 
-ZMQ를 통해 외부에서 JSON 형식의 ModelV2 데이터를 수신하고 openpilot 내부 메시지로 변환하여 발행합니다.
+ZMQ를 통해 외부에서 JSON 형식의 ModelV2 데이터를 수신하고 openpilot 내부 메시지로 변환하여 발행하는 **독립 실행 테스트 모듈**입니다.
 
 ## 사용 방법
 
@@ -75,11 +73,19 @@ echo -n "1" > ~/.comma/params/d/UseExternalModel
 echo -n "1" > /data/params/d/UseExternalModel
 ```
 
-### 2. 선택적: ZMQ 주소/토픽 설정
+### 2. 테스트 모듈 실행 (선택적)
+
+external_modeld.py는 외부 시스템을 시뮬레이션하는 테스트 모듈입니다.
+환경 변수로 설정:
 
 ```bash
-echo -n "tcp://192.168.1.100:5557" > ~/.comma/params/d/ExternalModelV2Addr
-echo -n "modelV2" > ~/.comma/params/d/ExternalModelV2Topic
+# 기본값 사용
+python selfdrive/modeld/external_modeld.py
+
+# 또는 환경 변수로 설정
+EXTERNAL_MODELV2_ADDR=tcp://192.168.1.100:5557 \
+EXTERNAL_MODELV2_TOPIC=modelV2 \
+python selfdrive/modeld/external_modeld.py
 ```
 
 기본값:
