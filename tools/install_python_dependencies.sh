@@ -2,7 +2,7 @@
 set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-ROOT="$DIR/../"
+ROOT="$(cd "$DIR/../" && pwd)"
 cd "$ROOT"
 
 RC_FILE="${HOME}/.$(basename ${SHELL})rc"
@@ -28,19 +28,13 @@ if [ -z "\$PYENV_ROOT" ]; then
   eval "\$(pyenv virtualenv-init -)"
 fi
 EOF
-
-  # Setup now without restarting shell
-  export PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
-  export PYENV_ROOT="$HOME/.pyenv"
-  eval "$(pyenv init -)"
-  eval "$(pyenv virtualenv-init -)"
 fi
 
-# Ensure pyenv is in PATH for current session
+# Always setup pyenv for current session
 export PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
 export PYENV_ROOT="$HOME/.pyenv"
-eval "$(pyenv init -)" 2>/dev/null || true
-eval "$(pyenv virtualenv-init -)" 2>/dev/null || true
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
 
 export MAKEFLAGS="-j$(nproc)"
 
@@ -58,16 +52,37 @@ if ! pyenv prefix ${PYENV_PYTHON_VERSION} &> /dev/null; then
   CONFIGURE_OPTS="--enable-shared" pyenv install -f ${PYENV_PYTHON_VERSION}
 fi
 
-eval "$(pyenv init --path)"
+# Set local Python version for this directory
+echo "Setting local Python version to ${PYENV_PYTHON_VERSION}..."
+pyenv local ${PYENV_PYTHON_VERSION}
+pyenv rehash
+
+# Verify correct Python is being used
+CURRENT_PYTHON=$(python --version 2>&1)
+echo "Current Python: $CURRENT_PYTHON"
+
+if [[ ! "$CURRENT_PYTHON" == *"$PYENV_PYTHON_VERSION"* ]]; then
+  echo "ERROR: Python version mismatch!"
+  echo "Expected: $PYENV_PYTHON_VERSION"
+  echo "Got: $CURRENT_PYTHON"
+  echo ""
+  echo "Please run: source ~/.bashrc && cd $ROOT"
+  exit 1
+fi
 
 echo "Updating pip..."
 pip install --upgrade pip==22.3.1
 
 echo "Installing poetry..."
 pip install poetry==1.2.2
+pyenv rehash
 
-# Configure poetry
+# Configure poetry to use the active Python
 poetry config virtualenvs.prefer-active-python true --local
+poetry config virtualenvs.in-project false --local
+
+# Tell poetry to use the pyenv Python
+poetry env use $(pyenv which python)
 
 # Set PYTHONPATH
 echo "PYTHONPATH=${ROOT}" > "$ROOT/.env"
@@ -89,5 +104,13 @@ if [ "$(uname)" != "Darwin" ]; then
 fi
 
 echo ""
-echo "Python dependencies installed successfully."
-echo "The environment will be automatically activated via pyenv."
+echo "================================================"
+echo "  Python dependencies installed successfully!"
+echo "================================================"
+echo ""
+echo "Python version: $(python --version)"
+echo "Poetry version: $(poetry --version)"
+echo ""
+echo "To use the environment, run:"
+echo "  source ~/.bashrc"
+echo ""
