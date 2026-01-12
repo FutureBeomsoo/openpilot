@@ -7,7 +7,7 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 cd "$DIR"
 
-IMAGE_NAME="ubuntu:20.04"
+IMAGE_NAME="openpilot-dev:configured"
 CONTAINER_NAME="openpilot-dev"
 
 # Host path to mount
