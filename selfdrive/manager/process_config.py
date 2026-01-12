@@ -29,14 +29,6 @@ def ublox(started, params, CP: car.CarParams) -> bool:
 def qcomgps(started, params, CP: car.CarParams) -> bool:
   return started and not ublox_available()
 
-def use_external_model(started, params, CP: car.CarParams) -> bool:
-  """Check if external model should be used instead of native modeld"""
-  return started and params.get_bool("UseExternalModel")
-
-def use_native_model(started, params, CP: car.CarParams) -> bool:
-  """Check if native modeld should be used (not external)"""
-  return started and not params.get_bool("UseExternalModel")
-
 procs = [
   # due to qualcomm kernel bugs SIGKILLing camerad sometimes causes page table corruption
   NativeProcess("camerad", "system/camerad", ["./camerad"], unkillable=True, callback=driverview),
@@ -51,8 +43,7 @@ procs = [
   NativeProcess("dmonitoringmodeld", "selfdrive/modeld", ["./dmonitoringmodeld"], enabled=(not PC or WEBCAM), callback=driverview),
   NativeProcess("encoderd", "system/loggerd", ["./encoderd"]),
   NativeProcess("loggerd", "system/loggerd", ["./loggerd"], onroad=False, callback=logging),
-  NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], callback=use_native_model),
-  PythonProcess("external_modeld", "selfdrive.modeld.external_modeld", callback=use_external_model),
+  NativeProcess("modeld", "selfdrive/modeld", ["./modeld"]),
   NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"]),
   NativeProcess("navmodeld", "selfdrive/modeld", ["./navmodeld"]),
   NativeProcess("sensord", "system/sensord", ["./sensord"], enabled=not PC),
