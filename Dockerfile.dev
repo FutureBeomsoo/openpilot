@@ -3,9 +3,9 @@
 
 FROM ghcr.io/commaai/openpilot-base:latest
 
-# Ensure pyenv PATH is set (inherited from base but explicit for clarity)
+# Ensure pyenv PATH is set
 ENV PYENV_ROOT="/root/.pyenv"
-ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
+ENV PATH="/root/.pyenv/bin:/root/.pyenv/shims:$PATH"
 
 # Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     htop \
     && rm -rf /var/lib/apt/lists/*
 
-# Re-install poetry (removed in base image)
-RUN pip install poetry==1.2.2
+# Re-install poetry (removed in base image) - use full path
+RUN /root/.pyenv/shims/pip install poetry==1.2.2
 
 # Git safe directory for mounted volumes
 RUN git config --global --add safe.directory '*'
