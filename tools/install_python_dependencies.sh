@@ -1,64 +1,93 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-# Increase the pip timeout to handle TimeoutError
-export PIP_DEFAULT_TIMEOUT=200
+set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-ROOT="$DIR"/../
+ROOT="$DIR/../"
 cd "$ROOT"
 
-# Install uv if not present
-if ! command -v "uv" > /dev/null 2>&1; then
-  echo "Installing uv..."
-  curl -LsSf --retry 5 --retry-delay 5 --retry-all-errors https://astral.sh/uv/install.sh | sh
-  UV_BIN="$HOME/.local/bin"
-  PATH="$UV_BIN:$PATH"
+RC_FILE="${HOME}/.$(basename ${SHELL})rc"
+if [ "$(uname)" == "Darwin" ] && [ $SHELL == "/bin/bash" ]; then
+  RC_FILE="$HOME/.bash_profile"
 fi
 
-echo "Updating uv..."
-uv self update || true
+# Install pyenv if not present
+if ! command -v "pyenv" > /dev/null 2>&1; then
+  echo "Installing pyenv..."
+  curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 
-# Check if pyproject.toml exists
-if [[ ! -f "$ROOT/pyproject.toml" ]]; then
-  echo "ERROR: pyproject.toml not found in $ROOT"
-  exit 1
-fi
-
-echo "Creating virtual environment and installing Python packages..."
-
-# Create .venv if it doesn't exist
-if [[ ! -d "$ROOT/.venv" ]]; then
-  # Get Python version from .python-version if exists
-  if [[ -f "$ROOT/.python-version" ]]; then
-    PYTHON_VERSION=$(cat "$ROOT/.python-version")
-    echo "Using Python version: $PYTHON_VERSION"
-    uv venv --python "$PYTHON_VERSION" "$ROOT/.venv" || uv venv "$ROOT/.venv"
-  else
-    uv venv "$ROOT/.venv"
+  # Add pyenv to RC file
+  if ! grep -q "pyenvrc" "$RC_FILE" 2>/dev/null; then
+    echo -e "\n. ~/.pyenvrc" >> $RC_FILE
   fi
+
+  cat <<EOF > "${HOME}/.pyenvrc"
+if [ -z "\$PYENV_ROOT" ]; then
+  export PATH=\$HOME/.pyenv/bin:\$HOME/.pyenv/shims:\$PATH
+  export PYENV_ROOT="\$HOME/.pyenv"
+  eval "\$(pyenv init -)"
+  eval "\$(pyenv virtualenv-init -)"
+fi
+EOF
+
+  # Setup now without restarting shell
+  export PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
+  export PYENV_ROOT="$HOME/.pyenv"
+  eval "$(pyenv init -)"
+  eval "$(pyenv virtualenv-init -)"
 fi
 
-# Install dependencies using uv
-echo "Installing Python packages with uv..."
-uv sync --frozen --all-extras 2>/dev/null || uv pip install -r <(uv pip compile pyproject.toml) --python "$ROOT/.venv/bin/python"
+# Ensure pyenv is in PATH for current session
+export PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
+export PYENV_ROOT="$HOME/.pyenv"
+eval "$(pyenv init -)" 2>/dev/null || true
+eval "$(pyenv virtualenv-init -)" 2>/dev/null || true
 
-# Activate and verify
-source "$ROOT/.venv/bin/activate"
+export MAKEFLAGS="-j$(nproc)"
 
-# Create .env file for environment variables
-if [[ ! -f "$ROOT/.env" ]]; then
-  touch "$ROOT/.env"
-  echo "PYTHONPATH=${ROOT}" >> "$ROOT/.env"
+# Get required Python version
+PYENV_PYTHON_VERSION=$(cat "$ROOT/.python-version")
+echo "Required Python version: $PYENV_PYTHON_VERSION"
+
+# Install Python if not present
+if ! pyenv prefix ${PYENV_PYTHON_VERSION} &> /dev/null; then
+  if [ "$(uname)" == "Linux" ]; then
+    echo "Updating pyenv..."
+    pyenv update || true
+  fi
+  echo "Installing Python ${PYENV_PYTHON_VERSION}..."
+  CONFIGURE_OPTS="--enable-shared" pyenv install -f ${PYENV_PYTHON_VERSION}
 fi
 
-# macOS specific settings
-if [[ "$(uname)" == 'Darwin' ]]; then
-  echo "# msgq doesn't work on mac" >> "$ROOT/.env"
-  echo "export ZMQ=1" >> "$ROOT/.env"
-  echo "export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES" >> "$ROOT/.env"
+eval "$(pyenv init --path)"
+
+echo "Updating pip..."
+pip install --upgrade pip==22.3.1
+
+echo "Installing poetry..."
+pip install poetry==1.2.2
+
+# Configure poetry
+poetry config virtualenvs.prefer-active-python true --local
+
+# Set PYTHONPATH
+echo "PYTHONPATH=${ROOT}" > "$ROOT/.env"
+poetry self add poetry-dotenv-plugin@^0.1.0 || true
+
+echo "Installing Python packages with poetry..."
+POETRY_INSTALL_ARGS="--no-cache --no-root"
+poetry install $POETRY_INSTALL_ARGS
+
+pyenv rehash
+
+# Install pre-commit hooks
+if [ "$(uname)" != "Darwin" ]; then
+  echo "Installing pre-commit hooks..."
+  if [ -f "$ROOT/.pre-commit-config.yaml" ]; then
+    cd "$ROOT"
+    poetry run pre-commit install || true
+  fi
 fi
 
 echo ""
 echo "Python dependencies installed successfully."
-echo "Activate the virtual environment with: source .venv/bin/activate"
+echo "The environment will be automatically activated via pyenv."

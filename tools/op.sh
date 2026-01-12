@@ -151,19 +151,32 @@ function op_check_python() {
   fi
 }
 
-function op_check_venv() {
-  echo "Checking for venv..."
-  if [[ -f $OPENPILOT_ROOT/.venv/bin/activate ]]; then
-    echo -e " ↳ [${GREEN}✔${NC}] venv detected."
+function op_check_pyenv() {
+  echo "Checking for pyenv..."
+  if command -v pyenv &> /dev/null; then
+    echo -e " ↳ [${GREEN}✔${NC}] pyenv detected."
+    PYENV_PYTHON_VERSION=$(cat "$OPENPILOT_ROOT/.python-version" 2>/dev/null || echo "")
+    if [[ -n "$PYENV_PYTHON_VERSION" ]] && pyenv prefix ${PYENV_PYTHON_VERSION} &> /dev/null; then
+      echo -e " ↳ [${GREEN}✔${NC}] Python ${PYENV_PYTHON_VERSION} installed."
+    else
+      echo -e " ↳ [${RED}✗${NC}] Python ${PYENV_PYTHON_VERSION} not installed. Run 'op setup' first."
+      return 1
+    fi
   else
-    echo -e " ↳ [${RED}✗${NC}] venv not found. Run 'op setup' first."
+    echo -e " ↳ [${RED}✗${NC}] pyenv not found. Run 'op setup' first."
     return 1
   fi
 }
 
-function op_activate_venv() {
+function op_activate_pyenv() {
   set +e
-  source $OPENPILOT_ROOT/.venv/bin/activate &> /dev/null || true
+  if [[ -f "$HOME/.pyenvrc" ]]; then
+    source "$HOME/.pyenvrc"
+  fi
+  export PATH=$HOME/.pyenv/bin:$HOME/.pyenv/shims:$PATH
+  export PYENV_ROOT="$HOME/.pyenv"
+  eval "$(pyenv init -)" 2>/dev/null || true
+  eval "$(pyenv virtualenv-init -)" 2>/dev/null || true
   set -e
 }
 
@@ -178,9 +191,9 @@ function op_before_cmd() {
   result="$((op_check_openpilot_dir ) 2>&1)" || (echo -e "$result" && return 1)
   result="${result}\n$(( op_check_git ) 2>&1)" || (echo -e "$result" && return 1)
   result="${result}\n$(( op_check_os ) 2>&1)" || (echo -e "$result" && return 1)
-  result="${result}\n$(( op_check_venv ) 2>&1)" || (echo -e "$result" && return 1)
+  result="${result}\n$(( op_check_pyenv ) 2>&1)" || (echo -e "$result" && return 1)
 
-  op_activate_venv
+  op_activate_pyenv
 
   result="${result}\n$(( op_check_python ) 2>&1)" || (echo -e "$result" && return 1)
 
@@ -234,20 +247,18 @@ function op_setup() {
 }
 
 function op_venv() {
-  op_before_cmd
+  op_get_openpilot_dir
+  cd $OPENPILOT_ROOT
 
-  if [[ ! -f $OPENPILOT_ROOT/.venv/bin/activate ]]; then
-    echo -e "No venv found in $OPENPILOT_ROOT"
-    return 1
-  fi
-
+  # For pyenv, just start a new shell with pyenv activated
+  echo "Starting shell with pyenv environment..."
   case $SHELL_NAME in
     "zsh")
       ZSHRC_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'tmp_zsh')
-      echo "source $RC_FILE; source $OPENPILOT_ROOT/.venv/bin/activate" >> $ZSHRC_DIR/.zshrc
+      echo "source $RC_FILE; source ~/.pyenvrc 2>/dev/null || true; cd $OPENPILOT_ROOT" >> $ZSHRC_DIR/.zshrc
       ZDOTDIR=$ZSHRC_DIR zsh ;;
     *)
-      bash --rcfile <(echo "source $RC_FILE; source $OPENPILOT_ROOT/.venv/bin/activate") ;;
+      bash --rcfile <(echo "source $RC_FILE; source ~/.pyenvrc 2>/dev/null || true; cd $OPENPILOT_ROOT") ;;
   esac
 }
 
@@ -300,12 +311,13 @@ function op_default() {
   echo ""
   echo -e "${BOLD}${UNDERLINE}Description:${NC}"
   echo "  op is your entry point for all things related to openpilot development."
+  echo "  Uses pyenv + poetry for Python environment management."
   echo ""
   echo -e "${BOLD}${UNDERLINE}Usage:${NC} op [OPTIONS] <COMMAND>"
   echo ""
   echo -e "${BOLD}${UNDERLINE}Commands [System]:${NC}"
   echo -e "  ${BOLD}check${NC}        Check the development environment"
-  echo -e "  ${BOLD}venv${NC}         Activate the python virtual environment"
+  echo -e "  ${BOLD}venv${NC}         Open a shell with pyenv environment"
   echo -e "  ${BOLD}setup${NC}        Install openpilot dependencies"
   echo -e "  ${BOLD}build${NC}        Build openpilot with scons"
   echo -e "  ${BOLD}install${NC}      Install the 'op' tool system wide"
@@ -328,7 +340,7 @@ function op_default() {
   echo -e "${BOLD}${UNDERLINE}Examples:${NC}"
   echo "  op setup              # Install dependencies"
   echo "  op build -j8          # Build with 8 cores"
-  echo "  op venv               # Activate virtual environment"
+  echo "  op venv               # Open pyenv shell"
 }
 
 function _op() {
