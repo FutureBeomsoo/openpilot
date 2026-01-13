@@ -22,7 +22,6 @@ Note: v0.9.4 doesn't have action field (desiredCurvature, desiredAcceleration).
 
 import time
 import argparse
-import numpy as np
 import cereal.messaging as messaging
 from cereal import log
 
@@ -32,8 +31,8 @@ PUBLISH_RATE = 20  # Hz
 DESIRE_LEN = 8
 
 # T_IDXS: quadratic spacing from 0 to 10 seconds (same as modeld)
-T_IDXS = np.array([10.0 * (i / (TRAJECTORY_SIZE - 1)) ** 2 for i in range(TRAJECTORY_SIZE)], dtype=np.float32)
-T_IDXS_LIST = T_IDXS.tolist()
+T_IDXS = [float(10.0 * (i / (TRAJECTORY_SIZE - 1)) ** 2) for i in range(TRAJECTORY_SIZE)]
+T_IDXS_LIST = T_IDXS
 
 
 class ExternalModelV2Publisher:
@@ -101,7 +100,7 @@ class ExternalModelV2Publisher:
     self.sm.update(0)
 
     # Get current vehicle state
-    v_ego = self.sm['carState'].vEgo if self.sm.valid['carState'] else self.target_speed
+    v_ego = float(self.sm['carState'].vEgo) if self.sm.valid['carState'] else float(self.target_speed)
 
     # Create message
     msg = messaging.new_message('modelV2')
@@ -120,14 +119,14 @@ class ExternalModelV2Publisher:
     # x: forward distance based on speed and time
     # y: lateral offset (controls steering via lat_mpc)
     # z: vertical (usually 0)
-    positions_x = [v_ego * t for t in T_IDXS]
-    positions_y = [self.lateral_offset] * TRAJECTORY_SIZE  # constant lateral offset
+    positions_x = [float(v_ego * t) for t in T_IDXS]
+    positions_y = [float(self.lateral_offset)] * TRAJECTORY_SIZE  # constant lateral offset
     positions_z = [0.0] * TRAJECTORY_SIZE
     self.fill_xyzt(modelV2.init('position'), self.create_xyzt_data(
       x=positions_x, y=positions_y, z=positions_z))
 
     # Velocity prediction
-    velocities_x = [self.target_speed] * TRAJECTORY_SIZE
+    velocities_x = [float(self.target_speed)] * TRAJECTORY_SIZE
     velocities_y = [0.0] * TRAJECTORY_SIZE
     velocities_z = [0.0] * TRAJECTORY_SIZE
     self.fill_xyzt(modelV2.init('velocity'), self.create_xyzt_data(
@@ -219,11 +218,11 @@ class ExternalModelV2Publisher:
 
   def set_lateral_offset(self, offset: float):
     """Set lateral offset (positive = move right, negative = move left)"""
-    self.lateral_offset = np.clip(offset, -2.0, 2.0)  # meters
+    self.lateral_offset = float(max(-2.0, min(2.0, offset)))  # meters
 
   def set_target_speed(self, speed: float):
     """Set target speed"""
-    self.target_speed = np.clip(speed, 0.0, 40.0)  # m/s
+    self.target_speed = float(max(0.0, min(40.0, speed)))  # m/s
 
 
 def main():
