@@ -18,4 +18,7 @@ git config --global --add safe.directory '*' 2>/dev/null
 # Activate poetry virtual environment directly (no subshell)
 source /home/pbs/openpilot_ws/openpilot_e2e/.venv/bin/activate
 
+# Set PYTHONPATH for openpilot modules (cereal, common, selfdrive, etc.)
+export PYTHONPATH="/home/pbs/openpilot_ws/openpilot_e2e:$PYTHONPATH"
+
 echo "Environment activated! (pyenv + poetry venv)"
