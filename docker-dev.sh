@@ -47,6 +47,7 @@ run_container() {
         --name ${CONTAINER_NAME} \
         --net=host \
         --privileged \
+        --gpus all \
         -e DISPLAY=${DISPLAY} \
         -e QT_X11_NO_MITSHM=1 \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
@@ -54,12 +55,12 @@ run_container() {
         --shm-size 2G \
         -w ${CONTAINER_OPENPILOT_PATH} \
         ${IMAGE_NAME} \
-        /bin/bash
+        /bin/bash -c "source ./activate_env.sh || /bin/bash"
 }
 
 exec_container() {
     echo "Executing bash in container: ${CONTAINER_NAME}"
-    docker exec -it ${CONTAINER_NAME} /bin/bash
+    docker exec -it ${CONTAINER_NAME} /bin/bash -c "source ./activate_env.sh || /bin/bash"
 }
 
 stop_container() {
