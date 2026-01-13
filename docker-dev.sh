@@ -28,9 +28,8 @@ usage() {
     echo "  HOST_OPENPILOT_PATH  Path to openpilot on host (default: current directory)"
     echo ""
     echo "After 'run', inside container:"
-    echo "  tools/ubuntu_setup.sh"
-    echo "  poetry shell"
-    echo "  scons -u -j\$(nproc)"
+    echo "  source activate_env.sh   # Activate pyenv + poetry venv"
+    echo "  scons -u -j\$(nproc)      # Build openpilot"
 }
 
 run_container() {
@@ -55,12 +54,12 @@ run_container() {
         --shm-size 2G \
         -w ${CONTAINER_OPENPILOT_PATH} \
         ${IMAGE_NAME} \
-        /bin/bash -c "source ./activate_env.sh || /bin/bash"
+        /bin/bash
 }
 
 exec_container() {
     echo "Executing bash in container: ${CONTAINER_NAME}"
-    docker exec -it ${CONTAINER_NAME} /bin/bash -c "source ./activate_env.sh || /bin/bash"
+    docker exec -it ${CONTAINER_NAME} /bin/bash
 }
 
 stop_container() {
