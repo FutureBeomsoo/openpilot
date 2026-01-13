@@ -58,15 +58,16 @@ mat3 update_calibration(Eigen::Vector3d device_from_calib_euler, bool wide_camer
 
 
 void run_model(ModelState &model, VisionIpcClient &vipc_client_main, VisionIpcClient &vipc_client_extra, bool main_wide_camera, bool use_extra_client) {
-  // messaging
-  PubMaster pm({"modelV2", "cameraOdometry"});
-  SubMaster sm({"lateralPlan", "roadCameraState", "liveCalibration", "driverMonitoringState", "navModel"});
-
   Params params;
 
   // Check if external model mode is enabled (modelV2 published by external source)
   bool use_external_model = params.getBool("UseExternalModel");
   LOGW("External Model mode: %s", use_external_model ? "enabled" : "disabled");
+
+  // messaging - only include modelV2 if NOT using external model
+  PubMaster pm(use_external_model ? std::vector<const char*>{"cameraOdometry"}
+                                   : std::vector<const char*>{"modelV2", "cameraOdometry"});
+  SubMaster sm({"lateralPlan", "roadCameraState", "liveCalibration", "driverMonitoringState", "navModel"});
 
   // setup filter to track dropped frames
   FirstOrderFilter frame_dropped_filter(0., 10., 1. / MODEL_FREQ);
