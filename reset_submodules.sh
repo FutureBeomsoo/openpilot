@@ -6,14 +6,9 @@
 
 set -e
 
-echo "Cleaning up submodules..."
+echo "Deinitializing submodules..."
+sudo git submodule deinit -f --all
 
-# Remove submodule directories
-sudo rm -rf cereal opendbc panda laika_repo rednose_repo msgq_repo body tinygrad_repo
-
-echo "Submodule directories removed."
-
-# Reinitialize submodules
 echo "Reinitializing submodules..."
 git submodule update --init --recursive
 
