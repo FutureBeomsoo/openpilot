@@ -158,15 +158,15 @@ RUN python -m venv /tmp/openpilot/.venv
 ENV VIRTUAL_ENV=/tmp/openpilot/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Cython 3.0 호환성 문제 해결 (av 패키지 빌드용)
-# 빌드 격리 비활성화하여 시스템 Cython 사용
-RUN pip install --upgrade pip==22.3.1 && \
-    pip install 'Cython<3.0'
+# pip 업그레이드
+RUN pip install --upgrade pip==22.3.1
 
-ENV PIP_NO_BUILD_ISOLATION=1
-
-RUN poetry install --no-cache --no-root && \
+# 핵심 의존성 설치 (dev 제외 - av 등 빌드 문제 회피)
+RUN poetry install --no-cache --no-root --without dev && \
     rm -rf /root/.cache/pypoetry
+
+# av 패키지 wheel 버전 별도 설치 (Cython 빌드 불필요)
+RUN pip install av==9.2.0
 
 # ============================================
 # 정리
