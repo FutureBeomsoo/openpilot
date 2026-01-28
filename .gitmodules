@@ -19,3 +19,6 @@
 [submodule "tinygrad"]
   path = tinygrad_repo
   url = https://github.com/geohot/tinygrad.git
+[submodule "msgq"]
+	path = msgq_repo
+	url = https://github.com/commaai/msgq.git
