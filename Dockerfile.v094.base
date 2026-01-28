@@ -166,9 +166,9 @@ RUN poetry install --no-cache --no-root --without dev --no-lock || true
 
 # 빌드에 필요한 핵심 패키지 별도 설치 (poetry 실패 대비)
 # pyproject.toml의 주요 의존성들
-RUN pip install scons numpy cython pycapnp pycryptodome certifi sympy \
+RUN pip install scons numpy==1.23.0 cython pycapnp pycryptodome certifi sympy \
     hatanaka cffi future-fstrings Jinja2 libusb1 onnx pillow \
-    protobuf psutil pycurl pyserial python-dateutil PyYAML pyzmq \
+    protobuf==3.20.3 psutil pycurl pyserial python-dateutil PyYAML pyzmq \
     requests setproctitle tqdm urllib3 atomicwrites cryptography Flask \
     smbus2 aiohttp crcmod hexdump sounddevice pyopencl timezonefinder utm \
     casadi==3.6.3
