@@ -150,6 +150,10 @@ COPY pyproject.toml poetry.lock .python-version ./
 
 # Poetry로 의존성 설치 (virtualenv 사용)
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+
+# Cython 3.0 호환성 문제 해결 (av 패키지 등)
+RUN pip install 'Cython<3.0'
+
 RUN poetry install --no-cache --no-root && \
     rm -rf /root/.cache/pypoetry
 
