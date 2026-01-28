@@ -1,0 +1,64 @@
+# openpilot v0.9.4 Build Image
+# 베이스 이미지 위에 소스 코드 복사 + 빌드
+#
+# 사전 조건: openpilot-base:v094 이미지가 먼저 빌드되어 있어야 함
+# 빌드: docker build -t openpilot:v094 -f Dockerfile.v094 .
+
+FROM openpilot-base:v094
+
+ENV PYTHONUNBUFFERED=1
+
+# 작업 디렉토리 설정
+ENV OPENPILOT_PATH=/root/openpilot
+ENV PYTHONPATH=${OPENPILOT_PATH}:${PYTHONPATH}
+
+WORKDIR ${OPENPILOT_PATH}
+
+# ============================================
+# 소스 코드 복사
+# ============================================
+# 빌드 설정 파일
+COPY SConstruct ${OPENPILOT_PATH}/
+
+# 서드파티 및 빌드 도구
+COPY ./third_party ${OPENPILOT_PATH}/third_party
+COPY ./site_scons ${OPENPILOT_PATH}/site_scons
+
+# 핵심 라이브러리 (submodules)
+COPY ./laika ${OPENPILOT_PATH}/laika
+COPY ./laika_repo ${OPENPILOT_PATH}/laika_repo
+COPY ./rednose ${OPENPILOT_PATH}/rednose
+COPY ./rednose_repo ${OPENPILOT_PATH}/rednose_repo
+COPY ./tinygrad ${OPENPILOT_PATH}/tinygrad
+COPY ./tinygrad_repo ${OPENPILOT_PATH}/tinygrad_repo
+COPY ./cereal ${OPENPILOT_PATH}/cereal
+COPY ./opendbc ${OPENPILOT_PATH}/opendbc
+COPY ./panda ${OPENPILOT_PATH}/panda
+COPY ./body ${OPENPILOT_PATH}/body
+
+# 메인 코드
+COPY ./common ${OPENPILOT_PATH}/common
+COPY ./selfdrive ${OPENPILOT_PATH}/selfdrive
+COPY ./system ${OPENPILOT_PATH}/system
+COPY ./tools ${OPENPILOT_PATH}/tools
+COPY ./release ${OPENPILOT_PATH}/release
+COPY ./scripts ${OPENPILOT_PATH}/scripts
+
+# 설정 파일들
+COPY pyproject.toml poetry.lock .python-version ${OPENPILOT_PATH}/
+COPY launch_openpilot.sh launch_chffrplus.sh launch_env.sh ${OPENPILOT_PATH}/
+
+# ============================================
+# 빌드
+# ============================================
+RUN scons -j$(nproc)
+
+# ============================================
+# 환경 설정
+# ============================================
+# openpilot 환경 변수 로드
+RUN echo "source ${OPENPILOT_PATH}/tools/openpilot_env.sh" >> /root/.bashrc
+
+WORKDIR ${OPENPILOT_PATH}
+
+CMD ["/bin/bash"]

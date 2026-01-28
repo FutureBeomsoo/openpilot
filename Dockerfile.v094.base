@@ -1,0 +1,172 @@
+# openpilot v0.9.4 Base Image
+# Ubuntu 20.04 + Python 3.11.4 + 시스템 의존성
+#
+# 빌드: docker build -t openpilot-base:v094 -f Dockerfile.v094.base .
+
+FROM ubuntu:20.04
+
+# 환경 변수 설정
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Locale 설정
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        sudo \
+        tzdata \
+        locales \
+        ssh && \
+    rm -rf /var/lib/apt/lists/* && \
+    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    locale-gen
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# ============================================
+# 시스템 패키지 설치 (tools/ubuntu_setup.sh 기반)
+# ============================================
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    # 빌드 도구
+    autoconf \
+    build-essential \
+    ca-certificates \
+    casync \
+    clang \
+    cmake \
+    make \
+    cppcheck \
+    libtool \
+    gcc-arm-none-eabi \
+    # 압축 라이브러리
+    bzip2 \
+    liblzma-dev \
+    libarchive-dev \
+    libbz2-dev \
+    # Cap'n Proto
+    capnproto \
+    libcapnp-dev \
+    # 네트워크/다운로드
+    curl \
+    libcurl4-openssl-dev \
+    # Git
+    git \
+    git-lfs \
+    # FFmpeg
+    ffmpeg \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libavfilter-dev \
+    libavresample-dev \
+    # 수학/선형대수
+    libeigen3-dev \
+    # Python/FFI
+    libffi-dev \
+    python-dev \
+    # OpenGL/Graphics
+    libglew-dev \
+    libgles2-mesa-dev \
+    libglfw3-dev \
+    libglib2.0-0 \
+    # 터미널
+    libncurses5-dev \
+    libncursesw5-dev \
+    # 병렬처리
+    libomp-dev \
+    # OpenCV
+    libopencv-dev \
+    # 이미지/오디오
+    libpng16-16 \
+    libportaudio2 \
+    portaudio19-dev \
+    # 보안
+    libssl-dev \
+    # 데이터베이스
+    libsqlite3-dev \
+    # USB
+    libusb-1.0-0-dev \
+    # ZeroMQ
+    libzmq3-dev \
+    # Systemd
+    libsystemd-dev \
+    # OpenCL
+    opencl-headers \
+    ocl-icd-libopencl1 \
+    ocl-icd-opencl-dev \
+    clinfo \
+    # Qt5 (Ubuntu 20.04)
+    qml-module-qtquick2 \
+    qtmultimedia5-dev \
+    qtlocation5-dev \
+    qtpositioning5-dev \
+    qttools5-dev-tools \
+    libqt5sql5-sqlite \
+    libqt5svg5-dev \
+    libqt5charts5-dev \
+    libqt5x11extras5-dev \
+    qt5-default \
+    # 기타
+    libreadline-dev \
+    libdw1 \
+    valgrind \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================
+# pyenv + Python 3.11.4 설치
+# ============================================
+ENV PYENV_VERSION=3.11.4
+ENV PYENV_ROOT="/root/.pyenv"
+ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
+
+# pyenv 설치
+RUN curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+
+# pyenv 환경 설정
+RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /root/.bashrc && \
+    echo 'export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"' >> /root/.bashrc && \
+    echo 'eval "$(pyenv init -)"' >> /root/.bashrc && \
+    echo 'eval "$(pyenv virtualenv-init -)"' >> /root/.bashrc
+
+# Python 3.11.4 설치 (shared library 포함)
+RUN CONFIGURE_OPTS="--enable-shared" pyenv install ${PYENV_VERSION} && \
+    pyenv global ${PYENV_VERSION} && \
+    pyenv rehash
+
+# pip 및 poetry 설치
+RUN pip install --upgrade pip==22.3.1 && \
+    pip install poetry==1.2.2
+
+# Poetry 설정: virtualenv 생성 안함 (시스템 Python 사용)
+ENV POETRY_VIRTUALENVS_CREATE=false
+
+# ============================================
+# Python 의존성 설치
+# ============================================
+WORKDIR /tmp/openpilot
+
+# 의존성 파일 복사
+COPY pyproject.toml poetry.lock .python-version ./
+
+# Poetry로 의존성 설치
+RUN poetry install --no-cache --no-root && \
+    pip cache purge
+
+# ============================================
+# 정리
+# ============================================
+# gcc-arm-none-eabi 불필요 아키텍처 제거 (용량 절감)
+RUN cd /usr/lib/gcc/arm-none-eabi/9.2.1 && \
+    rm -rf arm/ && \
+    rm -rf thumb/nofp thumb/v6* thumb/v8* thumb/v7+fp thumb/v7-r+fp.sp
+
+# Git 설정
+RUN git config --global --add safe.directory '*'
+
+# 작업 디렉토리 초기화
+WORKDIR /root/openpilot
+
+CMD ["/bin/bash"]
