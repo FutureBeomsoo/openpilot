@@ -151,15 +151,22 @@ COPY pyproject.toml poetry.lock .python-version ./
 # Poetry로 의존성 설치 (virtualenv 사용)
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 
-# Cython 3.0 호환성 문제 해결 (av 패키지 등)
-RUN pip install 'Cython<3.0'
+# virtualenv 생성
+RUN python -m venv /tmp/openpilot/.venv
+
+# virtualenv 활성화
+ENV VIRTUAL_ENV=/tmp/openpilot/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Cython 3.0 호환성 문제 해결 (av 패키지 빌드용)
+# 빌드 격리 비활성화하여 시스템 Cython 사용
+RUN pip install --upgrade pip==22.3.1 && \
+    pip install 'Cython<3.0'
+
+ENV PIP_NO_BUILD_ISOLATION=1
 
 RUN poetry install --no-cache --no-root && \
     rm -rf /root/.cache/pypoetry
-
-# virtualenv 활성화를 위한 환경 변수 설정
-ENV VIRTUAL_ENV=/tmp/openpilot/.venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # ============================================
 # 정리
