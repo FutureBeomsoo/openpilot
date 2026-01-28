@@ -140,9 +140,6 @@ RUN CONFIGURE_OPTS="--enable-shared" pyenv install ${PYENV_VERSION} && \
 RUN pip install --upgrade pip==22.3.1 && \
     pip install poetry==1.2.2
 
-# Poetry 설정: virtualenv 생성 안함 (시스템 Python 사용)
-ENV POETRY_VIRTUALENVS_CREATE=false
-
 # ============================================
 # Python 의존성 설치
 # ============================================
@@ -151,9 +148,14 @@ WORKDIR /tmp/openpilot
 # 의존성 파일 복사
 COPY pyproject.toml poetry.lock .python-version ./
 
-# Poetry로 의존성 설치
+# Poetry로 의존성 설치 (virtualenv 사용)
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 RUN poetry install --no-cache --no-root && \
-    pip cache purge
+    rm -rf /root/.cache/pypoetry
+
+# virtualenv 활성화를 위한 환경 변수 설정
+ENV VIRTUAL_ENV=/tmp/openpilot/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # ============================================
 # 정리
