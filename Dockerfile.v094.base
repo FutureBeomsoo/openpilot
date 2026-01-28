@@ -169,7 +169,7 @@ RUN poetry install --no-cache --no-root --without dev --no-lock || true
 RUN pip install scons numpy cython pycapnp pycryptodome certifi sympy \
     hatanaka cffi future-fstrings Jinja2 libusb1 onnx pillow \
     protobuf psutil pycurl pyserial python-dateutil PyYAML pyzmq \
-    requests setproctitle tqdm urllib3
+    requests setproctitle tqdm urllib3 atomicwrites cryptography Flask
 
 # av 패키지는 Cython 3.0 호환성 문제로 제외
 # 필요 시 컨테이너 내에서 수동 설치:
