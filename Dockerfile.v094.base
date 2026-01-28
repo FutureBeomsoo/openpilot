@@ -164,8 +164,9 @@ RUN pip install --upgrade pip==22.3.1
 # 핵심 의존성 설치 (dev 제외, lock 파일 없이)
 RUN poetry install --no-cache --no-root --without dev --no-lock || true
 
-# av 패키지 wheel 버전 별도 설치 (Cython 빌드 불필요)
-RUN pip install av==9.2.0
+# av 패키지는 Cython 3.0 호환성 문제로 제외
+# 필요 시 컨테이너 내에서 수동 설치:
+#   pip install 'Cython<3.0' && pip install --no-build-isolation av==9.2.0
 
 # ============================================
 # 정리
