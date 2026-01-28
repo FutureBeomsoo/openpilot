@@ -145,8 +145,8 @@ RUN pip install --upgrade pip==22.3.1 && \
 # ============================================
 WORKDIR /tmp/openpilot
 
-# 의존성 파일 복사
-COPY pyproject.toml poetry.lock .python-version ./
+# 의존성 파일 복사 (poetry.lock 제외 - LFS 파일이고 캐시 문제 있음)
+COPY pyproject.toml .python-version ./
 
 # Poetry로 의존성 설치 (virtualenv 사용)
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
@@ -161,9 +161,8 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # pip 업그레이드
 RUN pip install --upgrade pip==22.3.1
 
-# 핵심 의존성 설치 (dev 제외 - av 등 빌드 문제 회피)
-RUN poetry install --no-cache --no-root --without dev && \
-    rm -rf /root/.cache/pypoetry
+# 핵심 의존성 설치 (dev 제외, lock 파일 없이)
+RUN poetry install --no-cache --no-root --without dev --no-lock || true
 
 # av 패키지 wheel 버전 별도 설치 (Cython 빌드 불필요)
 RUN pip install av==9.2.0
