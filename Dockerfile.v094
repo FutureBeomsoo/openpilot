@@ -55,7 +55,8 @@ COPY launch_openpilot.sh launch_chffrplus.sh launch_env.sh ${OPENPILOT_PATH}/
 # ============================================
 # 빌드
 # ============================================
-RUN scons -j$(nproc)
+# scons가 virtualenv에 설치되어 있으므로 전체 경로 사용
+RUN /tmp/openpilot/.venv/bin/scons -j$(nproc)
 
 # ============================================
 # 환경 설정
