@@ -357,6 +357,9 @@ else:
 
 Export('common', 'gpucommon')
 
+SConscript(['msgq_repo/SConscript'])
+Import('msgq')
+
 # cereal and messaging are shared with the system
 SConscript(['cereal/SConscript'])
 if SHARED:
@@ -367,7 +370,7 @@ else:
   messaging = [File('#cereal/libmessaging.a')]
   visionipc = [File('#cereal/libvisionipc.a')]
 
-Export('cereal', 'messaging', 'visionipc')
+Export('cereal', 'messaging', 'visionipc', 'msgq')
 
 # Build rednose library and ekf models
 
