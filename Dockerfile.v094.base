@@ -165,7 +165,7 @@ RUN pip install --upgrade pip==22.3.1
 RUN poetry install --no-cache --no-root --without dev --no-lock || true
 
 # 빌드에 필요한 핵심 패키지 별도 설치 (poetry 실패 대비)
-RUN pip install scons numpy cython pycapnp
+RUN pip install scons numpy cython pycapnp pycryptodome
 
 # av 패키지는 Cython 3.0 호환성 문제로 제외
 # 필요 시 컨테이너 내에서 수동 설치:
