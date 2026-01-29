@@ -17,4 +17,4 @@ docker run -it --rm \
   --network host \
   --privileged \
   openpilot-sim:v094 \
-  bash -c "cd /root/openpilot && scons -j\$(nproc) && exec /bin/bash"
+  bash -c "source /tmp/openpilot/.venv/bin/activate && cd /root/openpilot && scons -j\$(nproc) && exec /bin/bash"
