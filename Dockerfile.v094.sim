@@ -1,0 +1,80 @@
+# openpilot v0.9.4 Simulator Image
+# Dockerfile.v094.base.cl 기반 + CARLA Python API + 시뮬레이션 도구
+#
+# 빌드 순서:
+#   1. docker build -t openpilot-base:v094 -f Dockerfile.v094.base .
+#   2. docker build -t openpilot-base-cl:v094 -f Dockerfile.v094.base.cl .
+#   3. docker build -t openpilot-sim:v094 -f Dockerfile.v094.sim .
+
+FROM openpilot-base-cl:v094
+
+# 환경 변수 설정
+ENV PYTHONUNBUFFERED=1
+ENV OPENPILOT_PATH=/root/openpilot
+ENV PYTHONPATH=${OPENPILOT_PATH}:${PYTHONPATH}
+
+# virtualenv 경로 설정
+ENV VIRTUAL_ENV=/tmp/openpilot/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# 시뮬레이션에 필요한 Python 패키지 설치
+# carla: CARLA Python API (v0.9.14, Python 3.11용)
+RUN pip install pygame opencv-python-headless
+
+# CARLA Python API 설치 (Python 3.11용)
+RUN pip install carla==0.9.14 || \
+    pip install https://github.com/commaai/carla/releases/download/3.11.4/carla-0.9.14-cp311-cp311-linux_x86_64.whl || \
+    echo "Warning: carla 설치 실패 - 수동 설치 필요"
+
+WORKDIR ${OPENPILOT_PATH}
+
+# ============================================
+# 소스 코드 복사
+# ============================================
+COPY SConstruct ${OPENPILOT_PATH}/
+
+# 서드파티 및 빌드 도구
+COPY ./third_party ${OPENPILOT_PATH}/third_party
+COPY ./site_scons ${OPENPILOT_PATH}/site_scons
+
+# 핵심 라이브러리 (submodules)
+COPY ./laika ${OPENPILOT_PATH}/laika
+COPY ./laika_repo ${OPENPILOT_PATH}/laika_repo
+COPY ./rednose ${OPENPILOT_PATH}/rednose
+COPY ./rednose_repo ${OPENPILOT_PATH}/rednose_repo
+COPY ./tinygrad ${OPENPILOT_PATH}/tinygrad
+COPY ./tinygrad_repo ${OPENPILOT_PATH}/tinygrad_repo
+COPY ./cereal ${OPENPILOT_PATH}/cereal
+COPY ./opendbc ${OPENPILOT_PATH}/opendbc
+COPY ./panda ${OPENPILOT_PATH}/panda
+COPY ./body ${OPENPILOT_PATH}/body
+
+# 메인 코드
+COPY ./common ${OPENPILOT_PATH}/common
+COPY ./selfdrive ${OPENPILOT_PATH}/selfdrive
+COPY ./system ${OPENPILOT_PATH}/system
+COPY ./tools ${OPENPILOT_PATH}/tools
+COPY ./release ${OPENPILOT_PATH}/release
+COPY ./scripts ${OPENPILOT_PATH}/scripts
+
+# 설정 파일들
+COPY pyproject.toml poetry.lock .python-version ${OPENPILOT_PATH}/
+COPY launch_openpilot.sh launch_chffrplus.sh launch_env.sh ${OPENPILOT_PATH}/
+
+# ============================================
+# 빌드
+# ============================================
+RUN /tmp/openpilot/.venv/bin/scons -j$(nproc)
+
+# ============================================
+# 시뮬레이션 초기 설정
+# ============================================
+# params 초기화 (시뮬레이션 모드)
+RUN python -c "from selfdrive.test.helpers import set_params_enabled; set_params_enabled()" || true
+
+# 환경 변수 설정
+RUN echo "source ${OPENPILOT_PATH}/tools/openpilot_env.sh" >> /root/.bashrc
+
+WORKDIR ${OPENPILOT_PATH}
+
+CMD ["/bin/bash"]
