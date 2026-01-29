@@ -19,12 +19,16 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # 시뮬레이션에 필요한 Python 패키지 설치
 # carla: CARLA Python API (v0.9.14, Python 3.11용)
-RUN pip install pygame opencv-python-headless
+RUN pip install pygame opencv-python-headless && \
+    pip install numpy==1.23.0 protobuf==3.20.3
 
 # CARLA Python API 설치 (Python 3.11용)
 RUN pip install carla==0.9.14 || \
     pip install https://github.com/commaai/carla/releases/download/3.11.4/carla-0.9.14-cp311-cp311-linux_x86_64.whl || \
     echo "Warning: carla 설치 실패 - 수동 설치 필요"
+
+# numpy 버전 재확인 (opencv가 numpy를 업그레이드할 수 있음)
+RUN pip install numpy==1.23.0
 
 WORKDIR ${OPENPILOT_PATH}
 
