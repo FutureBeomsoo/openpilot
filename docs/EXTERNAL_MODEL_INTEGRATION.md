@@ -387,11 +387,39 @@ positions_x = [v_ego * t for t in T_IDXS]  # numpy.float64
 positions_x = [float(v_ego * t) for t in T_IDXS]  # Python float
 ```
 
+### 7. "Low Communication Rate between Processes" 오류 (해결됨)
+
+외부 모델이 20Hz로 정확히 publish하지 않을 때 발생했던 오류입니다.
+
+**원인:**
+- openpilot은 modelV2가 20Hz로 도착하는지 체크
+- 외부 모델의 publish 주기가 불규칙하면 `commIssueAvgFreq` 이벤트 발생
+- 이로 인해 "openpilot Unavailable" 상태가 됨
+
+**해결:**
+`controlsd.py`와 `plannerd.py`에서 modelV2의 주파수 체크를 비활성화:
+
+```python
+# selfdrive/controls/controlsd.py:89
+ignore_avg_freq=['radarState', 'testJoystick', 'modelV2']
+
+# selfdrive/controls/plannerd.py:46
+ignore_avg_freq=['radarState', 'modelV2']
+```
+
+**영향받는 프로세스:**
+| 프로세스 | 역할 | modelV2 사용 |
+|----------|------|--------------|
+| controlsd | 메인 제어 | 주파수 체크, 상태 모니터링 |
+| plannerd | 경로 계획 | lateral/longitudinal plan 생성 |
+| radard | 레이더 처리 | 이미 ignore_avg_freq에 포함됨 |
+
 ---
 
 ## Git 커밋 히스토리
 
 ```
+418d4d147 fix: ignore modelV2 frequency check for external model mode
 035e5183c fix: conditionally create PubMaster based on UseExternalModel
 7f4b45353 fix: convert numpy types to Python floats for capnp
 f592854eb fix: add PYTHONPATH for openpilot modules
@@ -417,6 +445,9 @@ openpilot/
 ├── common/
 │   └── params.cc                      # UseExternalModel 파라미터 추가
 ├── selfdrive/
+│   ├── controls/
+│   │   ├── controlsd.py               # modelV2 주파수 체크 비활성화
+│   │   └── plannerd.py                # modelV2 주파수 체크 비활성화
 │   ├── modeld/
 │   │   ├── modeld.cc                  # 외부 모델 모드 지원
 │   │   └── external_modeld.py         # ZMQ 브릿지
